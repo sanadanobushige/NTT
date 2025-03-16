@@ -10,6 +10,11 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 public class MainActivity extends AppCompatActivity {
+    static {
+        System.loadLibrary("crypto");
+        System.loadLibrary("ssl");
+        System.loadLibrary("native-lib");
+    }
 
 
     public native String getOpenSSLVersion();
