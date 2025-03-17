@@ -1,11 +1,1 @@
-#include <jni.h>
-#include <openssl/opensslv.h>
-#include "OpenSSLWrapper.h"
-
-JNIEXPORT jstring JNICALL Java_OpenSSLWrapper_getVersion(JNIEnv *env, jobject thisObj) {
-    // 获取 OpenSSL 版本信息
-    const char *version = OPENSSL_VERSION_TEXT;
-
-    // 将版本信息返回给 Java
-    return (*env)->NewStringUTF(env, version);
-}
+gcc -shared -o openssl_native.dll -I"C:/Program Files/Java/jdk1.8.0_251/include" -I"C:/Program Files/Java/jdk1.8.0_251/include/win32" -I"C:/OpenSSL/include" -L"C:/OpenSSL/lib" -lssl -lcrypto -static OpenSSLWrapper.c
