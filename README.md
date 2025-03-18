@@ -1,1 +1,1 @@
-java -Djava.library.path=. OpenSSLWrapper
+egrep -c '(vmx|svm)' /proc/cpuinfo
