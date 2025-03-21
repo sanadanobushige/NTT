@@ -1,73 +1,49 @@
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.Socket;
+#include <jni.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
-public class OpenSSLSocket extends Socket {
-    private long sslCtxPtr;
-    private long sslPtr; // OpenSSL 的 SSL 指针
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_example_myapp_OpenSSLSocket_nativeCreateSSL(JNIEnv *env, jobject thiz, jlong ctxPtr) {
+    SSL *ssl = SSL_new(reinterpret_cast<SSL_CTX *>(ctxPtr));
+    return reinterpret_cast<jlong>(ssl);
+}
 
-    public OpenSSLSocket(long sslCtxPtr) {
-        this.sslCtxPtr = sslCtxPtr;
-        this.sslPtr = nativeCreateSSL(sslCtxPtr);
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_example_myapp_OpenSSLSocket_nativeConnect(JNIEnv *env, jobject thiz, jlong sslPtr, jstring jhost, jint port) {
+    const char *host = env->GetStringUTFChars(jhost, NULL);
+    
+    BIO *bio = BIO_new_ssl_connect(reinterpret_cast<SSL *>(sslPtr));
+    BIO_set_conn_hostname(bio, host);
+    
+    if (BIO_do_connect(bio) <= 0) {
+        ERR_print_errors_fp(stderr);
     }
+    
+    env->ReleaseStringUTFChars(jhost, host);
+}
 
-    public OpenSSLSocket(long sslCtxPtr, String host, int port) throws IOException {
-        this(sslCtxPtr);
-        connect(host, port);
-    }
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_example_myapp_OpenSSLSocket_nativeWrite(JNIEnv *env, jobject thiz, jlong sslPtr, jbyteArray data) {
+    jsize len = env->GetArrayLength(data);
+    jbyte *buf = env->GetByteArrayElements(data, NULL);
 
-    public OpenSSLSocket(long sslCtxPtr, Socket socket, String host, int port, boolean autoClose) throws IOException {
-        this(sslCtxPtr);
-        connect(socket, host, port, autoClose);
-    }
+    int result = SSL_write(reinterpret_cast<SSL *>(sslPtr), buf, len);
 
-    private native long nativeCreateSSL(long ctxPtr);
-    private native void nativeConnect(long sslPtr, String host, int port);
-    private native int nativeWrite(long sslPtr, byte[] data);
-    private native int nativeRead(long sslPtr, byte[] buffer);
+    env->ReleaseByteArrayElements(data, buf, JNI_ABORT);
+    return result;
+}
 
-    public void connect(String host, int port) throws IOException {
-        nativeConnect(sslPtr, host, port);
-    }
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_example_myapp_OpenSSLSocket_nativeRead(JNIEnv *env, jobject thiz, jlong sslPtr, jbyteArray buffer) {
+    jsize len = env->GetArrayLength(buffer);
+    jbyte *buf = env->GetByteArrayElements(buffer, NULL);
 
-    @Override
-    public OutputStream getOutputStream() throws IOException {
-        return new OutputStream() {
-            @Override
-            public void write(int b) throws IOException {
-                byte[] data = {(byte) b};
-                nativeWrite(sslPtr, data);
-            }
+    int result = SSL_read(reinterpret_cast<SSL *>(sslPtr), buf, len);
 
-            @Override
-            public void write(byte[] b, int off, int len) throws IOException {
-                byte[] data = new byte[len];
-                System.arraycopy(b, off, data, 0, len);
-                nativeWrite(sslPtr, data);
-            }
-        };
-    }
-
-    @Override
-    public InputStream getInputStream() throws IOException {
-        return new InputStream() {
-            @Override
-            public int read() throws IOException {
-                byte[] buffer = new byte[1];
-                int result = nativeRead(sslPtr, buffer);
-                return (result > 0) ? buffer[0] & 0xFF : -1;
-            }
-
-            @Override
-            public int read(byte[] b, int off, int len) throws IOException {
-                byte[] buffer = new byte[len];
-                int bytesRead = nativeRead(sslPtr, buffer);
-                if (bytesRead > 0) {
-                    System.arraycopy(buffer, 0, b, off, bytesRead);
-                }
-                return bytesRead;
-            }
-        };
-    }
+    env->ReleaseByteArrayElements(buffer, buf, 0);
+    return result;
 }
