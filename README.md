@@ -1,49 +1,110 @@
-#include <jni.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
+import javax.net.ssl.*;
+import java.security.*;
+import java.security.cert.*;
+import java.util.*;
+import java.io.*;
 
-extern "C"
-JNIEXPORT jlong JNICALL
-Java_com_example_myapp_OpenSSLSocket_nativeCreateSSL(JNIEnv *env, jobject thiz, jlong ctxPtr) {
-    SSL *ssl = SSL_new(reinterpret_cast<SSL_CTX *>(ctxPtr));
-    return reinterpret_cast<jlong>(ssl);
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_example_myapp_OpenSSLSocket_nativeConnect(JNIEnv *env, jobject thiz, jlong sslPtr, jstring jhost, jint port) {
-    const char *host = env->GetStringUTFChars(jhost, NULL);
-    
-    BIO *bio = BIO_new_ssl_connect(reinterpret_cast<SSL *>(sslPtr));
-    BIO_set_conn_hostname(bio, host);
-    
-    if (BIO_do_connect(bio) <= 0) {
-        ERR_print_errors_fp(stderr);
+public class OpenSSLContext extends SSLContextSpi {
+    static {
+        System.loadLibrary("openssl_ssl"); // 加载 JNI 共享库
     }
-    
-    env->ReleaseStringUTFChars(jhost, host);
-}
 
-extern "C"
-JNIEXPORT jint JNICALL
-Java_com_example_myapp_OpenSSLSocket_nativeWrite(JNIEnv *env, jobject thiz, jlong sslPtr, jbyteArray data) {
-    jsize len = env->GetArrayLength(data);
-    jbyte *buf = env->GetByteArrayElements(data, NULL);
+    private long nativeCtx; // OpenSSL 的 SSL_CTX 指针
 
-    int result = SSL_write(reinterpret_cast<SSL *>(sslPtr), buf, len);
+    // JNI 方法
+    private native long createNativeSSLContext();
+    private native void loadKeyAndCert(long ctx, byte[][] keyData, byte[][] certData);
+    private native void loadTrustedCAs(long ctx, byte[][] caCerts);
 
-    env->ReleaseByteArrayElements(data, buf, JNI_ABORT);
-    return result;
-}
+    @Override
+    protected void engineInit(KeyManager[] keyManagers, TrustManager[] trustManagers, SecureRandom secureRandom) throws KeyManagementException {
+        nativeCtx = createNativeSSLContext(); // 创建 OpenSSL SSL_CTX
 
-extern "C"
-JNIEXPORT jint JNICALL
-Java_com_example_myapp_OpenSSLSocket_nativeRead(JNIEnv *env, jobject thiz, jlong sslPtr, jbyteArray buffer) {
-    jsize len = env->GetArrayLength(buffer);
-    jbyte *buf = env->GetByteArrayElements(buffer, NULL);
+        try {
+            if (keyManagers != null) {
+                loadKeysFromKeyManager(keyManagers);
+            }
+            if (trustManagers != null) {
+                loadCAsFromTrustManager(trustManagers);
+            }
+        } catch (Exception e) {
+            throw new KeyManagementException("Failed to load keys or certificates", e);
+        }
+    }
 
-    int result = SSL_read(reinterpret_cast<SSL *>(sslPtr), buf, len);
+    private void loadKeysFromKeyManager(KeyManager[] keyManagers) throws Exception {
+        ArrayList<byte[]> keyList = new ArrayList<>();
+        ArrayList<byte[]> certList = new ArrayList<>();
 
-    env->ReleaseByteArrayElements(buffer, buf, 0);
-    return result;
+        for (KeyManager km : keyManagers) {
+            if (km instanceof X509KeyManager) {
+                X509KeyManager x509Km = (X509KeyManager) km;
+                String[] aliases = x509Km.getClientAliases("RSA", null);
+                if (aliases != null) {
+                    for (String alias : aliases) {
+                        PrivateKey key = x509Km.getPrivateKey(alias);
+                        if (key != null) {
+                            keyList.add(key.getEncoded());
+                        }
+                        X509Certificate[] chain = x509Km.getCertificateChain(alias);
+                        if (chain != null) {
+                            for (X509Certificate cert : chain) {
+                                certList.add(cert.getEncoded());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        byte[][] keyData = keyList.toArray(new byte[0][]);
+        byte[][] certData = certList.toArray(new byte[0][]);
+        loadKeyAndCert(nativeCtx, keyData, certData);
+    }
+
+    private void loadCAsFromTrustManager(TrustManager[] trustManagers) throws Exception {
+        ArrayList<byte[]> caCertList = new ArrayList<>();
+
+        for (TrustManager tm : trustManagers) {
+            if (tm instanceof X509TrustManager) {
+                X509TrustManager x509Tm = (X509TrustManager) tm;
+                for (X509Certificate cert : x509Tm.getAcceptedIssuers()) {
+                    caCertList.add(cert.getEncoded());
+                }
+            }
+        }
+
+        byte[][] caCerts = caCertList.toArray(new byte[0][]);
+        loadTrustedCAs(nativeCtx, caCerts);
+    }
+
+    @Override
+    protected SSLSocketFactory engineGetSocketFactory() {
+        return new OpenSSLSocketFactory(nativeCtx);
+    }
+
+    @Override
+    protected SSLServerSocketFactory engineGetServerSocketFactory() {
+        return null; // 可选
+    }
+
+    @Override
+    protected SSLEngine engineCreateSSLEngine() {
+        return null; // 可选
+    }
+
+    @Override
+    protected SSLEngine engineCreateSSLEngine(String host, int port) {
+        return null; // 可选
+    }
+
+    @Override
+    protected SSLSessionContext engineGetClientSessionContext() {
+        return null;
+    }
+
+    @Override
+    protected SSLSessionContext engineGetServerSessionContext() {
+        return null;
+    }
 }
