@@ -1,31 +1,12 @@
-public class MySSLContext extends SSLContextSpi {
-    static {
-        System.loadLibrary("myopenssl");
-    }
+#include <jni.h>
+#include <openssl/ssl.h>
 
-    private long nativeSSLContext; // 存储 C++ 端 OpenSSL 句柄
+extern "C" JNIEXPORT jlong JNICALL Java_MySSLContext_nativeCreateSSLContext(JNIEnv* env, jobject obj) {
+    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
+    return (jlong)ctx;
+}
 
-    public MySSLContext() {
-        nativeSSLContext = nativeCreateSSLContext();
-    }
-
-    private native long nativeCreateSSLContext();
-    private native void nativeFreeSSLContext(long ctx);
-    private native SSLSocketFactory nativeGetSSLSocketFactory(long ctx);
-
-    @Override
-    protected void engineInit(KeyManager[] km, TrustManager[] tm, SecureRandom sr) {
-        // 可在 JNI 层初始化 OpenSSL
-    }
-
-    @Override
-    protected SSLSocketFactory engineGetSocketFactory() {
-        return nativeGetSSLSocketFactory(nativeSSLContext);
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        nativeFreeSSLContext(nativeSSLContext);
-        super.finalize();
-    }
+extern "C" JNIEXPORT void JNICALL Java_MySSLContext_nativeFreeSSLContext(JNIEnv* env, jobject obj, jlong ctxPtr) {
+    SSL_CTX *ctx = (SSL_CTX *)ctxPtr;
+    SSL_CTX_free(ctx);
 }
