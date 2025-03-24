@@ -1,16 +1,18 @@
-public class OpenSSLContext {
-    static {
-        System.loadLibrary("openssl_ssl"); // 加载 JNI 共享库
-    }
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
-    private native void closeSSLConnection(long sslPtr);
+JNIEXPORT void JNICALL Java_com_example_OpenSSLContext_closeSSLConnection(JNIEnv *env, jobject obj, jlong sslPtr) {
+    if (sslPtr) {
+        SSL *ssl = (SSL *)sslPtr;
 
-    private long sslPtr;
-
-    public void closeConnection() {
-        if (sslPtr != 0) {
-            closeSSLConnection(sslPtr);
-            sslPtr = 0;  // 避免重复释放
+        // 1. 正常关闭 SSL 连接
+        int ret = SSL_shutdown(ssl);
+        if (ret == 0) {
+            // 双向关闭（SSL_shutdown 需要调用两次以完全关闭连接）
+            SSL_shutdown(ssl);
         }
+
+        // 2. 释放 SSL 资源
+        SSL_free(ssl);
     }
 }
