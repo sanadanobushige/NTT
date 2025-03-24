@@ -1,12 +1,16 @@
-#include <jni.h>
-#include <openssl/ssl.h>
+public class OpenSSLContext {
+    static {
+        System.loadLibrary("openssl_ssl"); // 加载 JNI 共享库
+    }
 
-extern "C" JNIEXPORT jlong JNICALL Java_MySSLContext_nativeCreateSSLContext(JNIEnv* env, jobject obj) {
-    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
-    return (jlong)ctx;
-}
+    private native void closeSSLConnection(long sslPtr);
 
-extern "C" JNIEXPORT void JNICALL Java_MySSLContext_nativeFreeSSLContext(JNIEnv* env, jobject obj, jlong ctxPtr) {
-    SSL_CTX *ctx = (SSL_CTX *)ctxPtr;
-    SSL_CTX_free(ctx);
+    private long sslPtr;
+
+    public void closeConnection() {
+        if (sslPtr != 0) {
+            closeSSLConnection(sslPtr);
+            sslPtr = 0;  // 避免重复释放
+        }
+    }
 }
