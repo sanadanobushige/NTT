@@ -1,23 +1,61 @@
-extern "C"
-JNIEXPORT void JNICALL
-Java_OpenSSLSocketFactory_performHandshake(JNIEnv *env, jobject obj, jlong sslPtr) {
-    SSL *ssl = (SSL *) sslPtr;
-    if (!ssl) return;
+package com.example.ssldemo.openssl;
 
-    int ret = SSL_connect(ssl);
-    if (ret == 1) {  // 握手成功
-        printf("🔹 OpenSSL 握手完成！\n");
-        SSL_SESSION *session = SSL_get_session(ssl);
-        if (session) {
-            SSL_SESSION_up_ref(session);
-            // 这里可以存储 session
-        }
+import android.util.Log;
 
-        // 通知 Java 层
-        jclass cls = env->GetObjectClass(obj);
-        jmethodID mid = env->GetMethodID(cls, "onHandshakeComplete", "()V");
-        if (mid) {
-            env->CallVoidMethod(obj, mid);
-        }
+import javax.net.ssl.SSLSocketFactory;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
+
+public class OpenSSLSocketFactory extends SSLSocketFactory {
+    private static final String TAG = "OpenSSL";
+    private final long sslCtxPtr;
+    public OpenSSLSocketFactory(long sslCtxPtr) {
+        Log.d(TAG,"OpenSSLSocketFactory");
+        this.sslCtxPtr = sslCtxPtr;
+    }
+    @Override
+    public Socket createSocket() throws IOException {
+        Log.d(TAG,"createSocket1");
+        return new OpenSSLSocket(sslCtxPtr);
+    }
+    @Override
+    public Socket createSocket(String host, int port) throws IOException {
+        Log.d(TAG,"createSocket2");
+        return new OpenSSLSocket(sslCtxPtr, host, port);
+    }
+
+    @Override
+    public Socket createSocket(String s, int i, InetAddress inetAddress, int i1) throws IOException, UnknownHostException {
+
+        Log.d(TAG,"createSocket3");
+        return null;
+    }
+
+
+    @Override
+    public Socket createSocket(InetAddress host, int port) throws IOException {
+        Log.d(TAG,"createSocket5");
+        return new OpenSSLSocket(sslCtxPtr, host.getHostAddress(), port);
+    }
+    @Override
+    public Socket createSocket(InetAddress address, int port, InetAddress localAddress, int localPort) throws IOException {
+        Log.d(TAG,"createSocket6");
+        return new OpenSSLSocket(sslCtxPtr, address.getHostAddress(), port);
+    }
+    @Override
+    public String[] getDefaultCipherSuites() {
+        return new String[]{"TLS_AES_256_GCM_SHA384", "TLS_AES_128_GCM_SHA256"};
+    }
+    @Override
+    public String[] getSupportedCipherSuites() {
+        return getDefaultCipherSuites();
+    }
+
+    @Override
+    public Socket createSocket(Socket socket, String s, int i, boolean b) throws IOException {
+        Log.d(TAG,"createSocket4");
+        return null;
     }
 }
