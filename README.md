@@ -28,9 +28,7 @@ public class OpenSSLSocketFactory extends SSLSocketFactory {
 
     @Override
     public Socket createSocket(String s, int i, InetAddress inetAddress, int i1) throws IOException, UnknownHostException {
-
-        Log.d(TAG,"createSocket3");
-        return null;
+        return new OpenSSLSocket(sslCtxPtr, s, i);
     }
 
 
@@ -56,6 +54,6 @@ public class OpenSSLSocketFactory extends SSLSocketFactory {
     @Override
     public Socket createSocket(Socket socket, String s, int i, boolean b) throws IOException {
         Log.d(TAG,"createSocket4");
-        return null;
+        return new OpenSSLSocket(sslCtxPtr, s, i);
     }
 }
