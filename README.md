@@ -1,25 +1,57 @@
-	
-                                                                                                    	2025-03-26 10:35:01.227  1112-21366 CCTUploader             com.google.android.gms.persistent    W  Clearcut transport failed to make network request after 4012 milliseconds.
-                                                                                                    java.io.IOException: bpcw: Failed to process request
-                                                                                                    	at alfp.a(:com.google.android.gms@242335041@24.23.35 (190800-646585959):106)
-                                                                                                    	at algl.b(:com.google.android.gms@242335041@24.23.35 (190800-646585959):367)
-                                                                                                    	at com.google.android.gms.clearcut.uploader.QosUploaderChimeraService.g(:com.google.android.gms@242335041@24.23.35 (190800-646585959):1469)
-                                                                                                    	at com.google.android.gms.clearcut.uploader.QosUploaderChimeraService.a(:com.google.android.gms@242335041@24.23.35 (190800-646585959):24)
-                                                                                                    	at bpjj.call(:com.google.android.gms@242335041@24.23.35 (190800-646585959):32)
-                                                                                                    	at java.util.concurrent.FutureTask.run(FutureTask.java:264)
-                                                                                                    	at angs.c(:com.google.android.gms@242335041@24.23.35 (190800-646585959):50)
-                                                                                                    	at angs.run(:com.google.android.gms@242335041@24.23.35 (190800-646585959):76)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:644)
-                                                                                                    	at anmg.run(:com.google.android.gms@242335041@24.23.35 (190800-646585959):8)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1012)
-                                                                                                    Caused by: bpcw: Failed to process request
-                                                                                                    	at bpgb.b(:com.google.android.gms@242335041@24.23.35 (190800-646585959):19)
-                                                                                                    	at bpgp.onFailed(:com.google.android.gms@242335041@24.23.35 (190800-646585959):13)
-                                                                                                    	at m.mw.onFailed(:com.google.android.gms.dynamite_cronetdynamite@242335041@24.23.35 (190800-0):3)
-                                                                                                    	at m.lw.run(:com.google.android.gms.dynamite_cronetdynamite@242335041@24.23.35 (190800-0):9)
-                                                                                                    	at etxk.execute(:com.google.android.gms@242335041@24.23.35 (190800-646585959):1)
-                                                                                                    	at org.chromium.net.impl.CronetUrlRequest.onNativeAdapterDestroyed(:com.google.android.gms.dynamite_cronetdynamite@242335041@24.23.35 (190800-0):18)
-                                                                                                    Caused by: m.mj: Exception in CronetUrlRequest: net::ERR_QUIC_PROTOCOL_ERROR, ErrorCode=10, InternalErrorCode=-356, Retryable=false, QuicDetailedErrorCode=25
-                                                                                                    	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@242335041@24.23.35 (190800-0):6)
-2025-03-26 10:35:01.277  1112-29780 NetworkScheduler.Stats  com.google.android.gms.persistent    I  (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+import okhttp3.*;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.util.List;
+
+public class OkHttpEventListener extends EventListener {
+    @Override
+    public void callStart(Call call) {
+        System.out.println("🔹 开始请求: " + call.request().url());
+    }
+
+    @Override
+    public void dnsStart(Call call, String domainName) {
+        System.out.println("🔹 DNS 解析: " + domainName);
+    }
+
+    @Override
+    public void dnsEnd(Call call, String domainName, List<InetAddress> inetAddressList) {
+        System.out.println("🔹 解析到 IP: " + inetAddressList);
+    }
+
+    @Override
+    public void connectStart(Call call, InetSocketAddress inetSocketAddress, Proxy proxy) {
+        System.out.println("🔹 连接目标地址: " + inetSocketAddress.getHostName());
+        System.out.println("🔹 解析后的 IP: " + inetSocketAddress.getAddress());
+        System.out.println("🔹 端口号: " + inetSocketAddress.getPort());
+        System.out.println("🔹 代理: " + proxy);
+    }
+
+    @Override
+    public void secureConnectStart(Call call) {
+        System.out.println("🔹 开始 TLS/SSL 握手");
+    }
+
+    @Override
+    public void secureConnectEnd(Call call, Handshake handshake) {
+        System.out.println("🔹 TLS/SSL 握手完成");
+        System.out.println("🔹 使用的协议: " + handshake.tlsVersion());
+        System.out.println("🔹 服务器证书: " + handshake.peerCertificates());
+    }
+
+    @Override
+    public void connectFailed(Call call, InetSocketAddress inetSocketAddress, Proxy proxy, Protocol protocol, Throwable throwable) {
+        System.out.println("❌ 连接失败: " + throwable.getMessage());
+    }
+
+    @Override
+    public void callEnd(Call call) {
+        System.out.println("✅ 请求完成");
+    }
+
+    @Override
+    public void callFailed(Call call, IOException ioe) {
+        System.out.println("❌ 请求失败: " + ioe.getMessage());
+    }
+}
