@@ -1,12 +1,24 @@
-#include <android/log.h>
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
-#define TAG "NativeLog"  // Logcat 中的 Tag
-#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)  // Debug 级别日志
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)  // Error 级别日志
+public class HttpUrlConnectionExample {
+    public static void main(String[] args) {
+        try {
+            URL url = new URL("https://www.example.com");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_example_myapp_NativeLib_nativeMethod(JNIEnv *env, jobject thiz) {
-    LOGD("This is a debug log from C code");
-    LOGE("This is an error log from C code, value: %d", 42);
+            // 读取响应
+            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+            reader.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
